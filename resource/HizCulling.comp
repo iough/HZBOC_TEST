@@ -1,0 +1,141 @@
+#version 450
+layout(local_size_x = 256) in;
+layout(binding = 1) uniform sampler2D inImage;
+layout(std140, binding = 0) uniform transformMatrix{
+	mat4 viewMat;
+	mat4 projMat;
+	mat4 vpMat;
+};
+
+layout(std140, binding = 1) uniform modelDataList{
+	mat4 modelMat;
+	uint isDraw;
+	uint modelID;
+	uint materialID;
+	uint reserved1;
+};
+
+struct MeshletData{
+	vec3 center;
+	float radius;
+	vec3 color;
+	uint clusterID;
+	vec3 coneNorm;
+	uint isDraw;
+	vec3 coneApex;
+	float coneAngle;
+};
+
+layout(std140, binding = 0) buffer MeshletDataBuffer{
+	MeshletData meshletDatas[];
+};
+
+struct DrawIndirectCommand{
+	uint vertexCount;
+	uint instanceCount;
+	uint firstIndex;
+	int baseVertex;
+	uint baseInstance;
+};
+layout(std430, binding = 1) readonly buffer In_DrawIndirectCommandsBuffer{
+	DrawIndirectCommand In_drawCommands[];
+};
+
+layout(std430, binding = 2) writeonly buffer Out_DrawIndirectCommandsBuffer{
+	DrawIndirectCommand Out_drawCommands[];
+};
+
+layout(std430, binding = 3) buffer VisibleLogBuffer{
+	uint VisibleLogs[];
+};
+
+layout(binding = 0, offset = 0) uniform atomic_uint drawCmdCounter;
+layout(binding = 0, offset = 4) uniform atomic_uint fixedCmdCounter;
+layout(location = 0) uniform vec3 cameraPos;
+
+shared vec4 boxcorner[gl_WorkGroupSize.x * 8];
+
+bool isVisible(in uint ID){
+	vec3 minPos = meshletDatas[ID].center - vec3(meshletDatas[ID].radius);
+	vec3 maxPos = meshletDatas[ID].center + vec3(meshletDatas[ID].radius);
+	minPos = (modelMat * vec4(minPos,1.0)).xyz;
+	maxPos = (modelMat * vec4(maxPos,1.0)).xyz;
+	uint index = gl_LocalInvocationID.x * 8;
+	boxcorner[index + 0] = vpMat * vec4(minPos.x, minPos.y, minPos.z, 1.0);
+	boxcorner[index + 1] = vpMat * vec4(maxPos.x, minPos.y, minPos.z, 1.0);
+	boxcorner[index + 2] = vpMat * vec4(minPos.x, maxPos.y, minPos.z, 1.0);
+	boxcorner[index + 3] = vpMat * vec4(maxPos.x, maxPos.y, minPos.z, 1.0);
+	boxcorner[index + 4] = vpMat * vec4(minPos.x, minPos.y, maxPos.z, 1.0);
+	boxcorner[index + 5] = vpMat * vec4(maxPos.x, minPos.y, maxPos.z, 1.0);
+	boxcorner[index + 6] = vpMat * vec4(minPos.x, maxPos.y, maxPos.z, 1.0);
+	boxcorner[index + 7] = vpMat * vec4(maxPos.x, maxPos.y, maxPos.z, 1.0);
+	uint OutofBound[7] = uint[7](0, 0, 0, 0, 0, 0, 0);
+	for(int i = 0; i < 8; ++i){
+		OutofBound[0] += boxcorner[index + i].x >  boxcorner[index + i].w ? 1 : 0;
+		OutofBound[1] += boxcorner[index + i].x < -boxcorner[index + i].w ? 1 : 0;
+		OutofBound[2] += boxcorner[index + i].y >  boxcorner[index + i].w ? 1 : 0;
+		OutofBound[3] += boxcorner[index + i].y < -boxcorner[index + i].w ? 1 : 0;
+		OutofBound[4] += boxcorner[index + i].z >  boxcorner[index + i].w ? 1 : 0;
+		OutofBound[5] += boxcorner[index + i].z < -boxcorner[index + i].w ? 1 : 0;
+		OutofBound[6] += boxcorner[index + i].w <= 0 ? 1 : 0;
+	}
+	if(OutofBound[0] == 8) return false;
+	if(OutofBound[1] == 8) return false;
+	if(OutofBound[2] == 8) return false;
+	if(OutofBound[3] == 8) return false;
+	if(OutofBound[4] == 8) return false;
+	if(OutofBound[5] == 8) return false;
+	if(OutofBound[6] == 8) return false;
+
+	vec2 minXY = vec2(1.0);
+	vec2 maxXY = vec2(-1.0);
+	float minZ = 1.0;
+	for(int i = 0; i < 8;++i){
+		vec4 clipPos = boxcorner[index + i];
+		clipPos.xyz /= clipPos.w;
+		minXY = min(clipPos.xy, minXY);
+		maxXY = max(clipPos.xy, maxXY);
+		minZ = min(minZ, clipPos.z);
+	}
+	minXY = clamp(minXY * vec2(0.5) + vec2(0.5), vec2(0.0), vec2(1.0));
+	maxXY = clamp(maxXY * vec2(0.5) + vec2(0.5), vec2(0.0), vec2(1.0));
+	vec4 rectUV = vec4(minXY, maxXY);
+	vec2 size = maxXY - minXY;
+	ivec2 texSize = textureSize(inImage, 0);
+	float maxSize = max(size.x * texSize.x, size.y * texSize.y);
+	
+	float viewCullThreshold = 1.0;
+	if(maxSize < viewCullThreshold) return false;
+
+	vec3 conePos = (modelMat * vec4(meshletDatas[ID].coneApex, 1.0)).xyz;
+	if(dot(normalize(conePos - cameraPos), meshletDatas[ID].coneNorm) >= meshletDatas[ID].coneAngle) return false;
+
+	float mipLevel = ceil(log2(maxSize));
+	vec4 depth = vec4(
+		textureLod(inImage, rectUV.xy, mipLevel).x,
+		textureLod(inImage, rectUV.zy, mipLevel).x,
+		textureLod(inImage, rectUV.xw, mipLevel).x,
+		textureLod(inImage, rectUV.zw, mipLevel).x
+	);
+	float maxDepth = max(max(depth.x, depth.y), max(depth.z, depth.w));
+	return minZ <= maxDepth;
+}
+
+void main(){
+	uint gID = gl_GlobalInvocationID.x;
+	if(gID >= In_drawCommands.length()) return;
+	if(isVisible(gID)){
+		if(VisibleLogs[gID] != 0){
+			uint OutDrawID = atomicCounterIncrement(drawCmdCounter);
+			Out_drawCommands[OutDrawID] = In_drawCommands[gID];
+		}		
+		if(VisibleLogs[gID] == 0){
+			uint FixedDrawID = atomicCounterIncrement(fixedCmdCounter);
+			Out_drawCommands[In_drawCommands.length() -1 - FixedDrawID] = In_drawCommands[gID];
+		}
+		VisibleLogs[gID] = 1;
+	}
+	else{
+		VisibleLogs[gID] = 0;
+	}
+}

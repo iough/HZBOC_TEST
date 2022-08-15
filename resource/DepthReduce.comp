@@ -1,0 +1,30 @@
+#version 450
+layout(local_size_x = 16, local_size_y = 16)in;
+layout(binding = 0, r32f) uniform readonly image2D In_Image;
+layout(binding = 1, r32f) uniform writeonly image2D Out_Image;
+
+void main(){
+	uvec2 currentCoord = gl_GlobalInvocationID.xy;
+	ivec2 currentSize = imageSize(Out_Image);
+	if(currentCoord.x >= currentSize.x || currentCoord.y >= currentSize.y) return;
+	ivec2 lastSize = imageSize(In_Image);
+	vec2 lastPos = (vec2(currentCoord) + vec2(0.5)) * vec2(lastSize) / vec2(currentSize);
+	ivec2 lastCoord = ivec2(floor(lastPos.x), floor(lastPos.y));
+	vec4 texels = vec4(0.0);
+	texels.x = imageLoad(In_Image, lastCoord + ivec2(-1,-1)).x;
+	texels.y = imageLoad(In_Image, lastCoord + ivec2( 0,-1)).x;
+	texels.z = imageLoad(In_Image, lastCoord + ivec2(-1, 0)).x;
+	texels.w = imageLoad(In_Image, lastCoord + ivec2( 0, 0)).x;
+	float maxDepth = max(max(texels.x, texels.y), max(texels.z, texels.w));
+	vec3 extra = vec3(0.0);
+	if((lastSize.x & 1)!=0){
+		if((lastSize.y & 1)!=0){
+			extra.z = imageLoad(In_Image, lastCoord + ivec2(1, 1)).x;
+			maxDepth = max(maxDepth, extra.z);
+		}
+		extra.x = imageLoad(In_Image, lastCoord + ivec2(1, 0)).x;
+		extra.y = imageLoad(In_Image, lastCoord + ivec2(1,-1)).x;
+		maxDepth = max(maxDepth , max(extra.x, extra.y));
+	}
+	imageStore(Out_Image, ivec2(currentCoord), vec4(maxDepth));
+}
