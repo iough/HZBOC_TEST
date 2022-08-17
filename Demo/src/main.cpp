@@ -3,7 +3,7 @@
 #include "shader.h"
 #include "camera.h"
 #include "modelLoader.h"
-
+#include <ProjectConfig.h>
 
 void processInput(GLFWwindow* window);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int modes);
@@ -116,7 +116,7 @@ int main() {
 		}
 	}
 	
-	Model car("../resource/Objects/Car.obj");
+	Model car("resource/Objects/Car.obj");
 	int mtlNum = 5;
 	for (int i = 0; i < mtlNum; ++i) {
 		batchInstance.LoadMaterials((rand()%10)/10.0f, (rand() % 10) / 10.0f, (rand() % 10) / 10.0f, 0.0f);
@@ -133,10 +133,10 @@ int main() {
 	}
 	batchInstance.SetUp();
 
-	Shader offlineRenderShader("../resource/Shaders/OfflineRender.vert", "../resource/Shaders/OfflineRender.frag");
-	Shader presentShader("../resource/Shaders/Present.vert", "../resource/Shaders/Present.frag");
-	Shader DepthReduce("../resource/Shaders/DepthReduce.comp");
-	Shader HizCulling("../resource/Shaders/HizCulling.comp");
+	Shader offlineRenderShader("resource/Shaders/OfflineRender.vert", "resource/Shaders/OfflineRender.frag");
+	Shader presentShader("resource/Shaders/Present.vert", "resource/Shaders/Present.frag");
+	Shader DepthReduce("resource/Shaders/DepthReduce.comp");
+	Shader HizCulling("resource/Shaders/HizCulling.comp");
 
 	PrepareTransformMatrix();
 	PrepareFrameBuffer();

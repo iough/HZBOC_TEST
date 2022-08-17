@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20) 
-get_filename_component(PROJNAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-project(${PROJNAME})
+get_filename_component(PROJ_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+project(${PROJ_NAME})
 if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
   message(FATAL_ERROR "In-source builds are not allowed")
 endif()
@@ -10,18 +10,15 @@ else()
     message(FATAL_ERROR "Not support ${CMAKE_SYSTEM_NAME} yet.")
 endif()
 
-message(STATUS "Top level CMakeLists.txt")
-
 foreach(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
     string(TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${PROJECT_BINARY_DIR}/bin)
 endforeach()
 
-set(CMAKE_SUPPRESS_REGENERATION TRUE)
-message(STATUS "${CMAKE_SUPPRESS_REGENERATION}")
+#set(CMAKE_SUPPRESS_REGENERATION TRUE)
+#message(STATUS "${CMAKE_SUPPRESS_REGENERATION}")
 
-include(./CommonMacros.txt)
-set(APP_NAME "Hiz-Culling")
+set(APP_NAME "${PROJ_NAME}")
 SETUP_APP(${APP_NAME})
 
 #configure_file(ProjectConfig.h.in ${PROJECT_SOURCE_DIR}/src/ProjectConfig.h)
@@ -60,11 +57,16 @@ add_library(tinyobj INTERFACE)
 target_include_directories(tinyobj INTERFACE ${PROJECT_SOURCE_DIR}/../thirdParty/tinyobjloader)
 target_link_libraries(${APP_NAME} PRIVATE tinyobj)
 
+#set(PROJ_RES
+#	Objects/Car.obj
+#	Shaders/Offline.vert
+#)
+#ADD_SOURCES(UpdateResources PROJ_RES)
 add_custom_target(UpdateRes VERBATIM 
 	COMMAND ${CMAKE_COMMAND} -E copy_directory 
 		"${PROJECT_SOURCE_DIR}/../resource/Objects" 
-		"${PROJECT_BINARY_DIR}/resource/Objects"
+		"${PROJECT_BINARY_DIR}/bin/resource/Objects"
 	COMMAND ${CMAKE_COMMAND} -E copy_directory 
 		"${PROJECT_SOURCE_DIR}/../resource/Shaders" 
-		"${PROJECT_BINARY_DIR}/resource/Shaders"
+		"${PROJECT_BINARY_DIR}/bin/resource/Shaders"
 )

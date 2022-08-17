@@ -1,0 +1,1 @@
+const char* resPath = "${PROJECT_SOURCE_DIR}/../resource/";
