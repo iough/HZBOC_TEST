@@ -17,6 +17,9 @@ foreach(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${PROJECT_BINARY_DIR}/bin)
 endforeach()
 
+set(CMAKE_SUPPRESS_REGENERATION TRUE)
+message(STATUS "${CMAKE_SUPPRESS_REGENERATION}")
+
 include(./CommonMacros.txt)
 set(APP_NAME "Hiz-Culling")
 SETUP_APP(${APP_NAME})
@@ -26,12 +29,16 @@ SETUP_APP(${APP_NAME})
 
 #target_compile_definitions(${APP_NAME} PUBLIC "TEST_APP")
 
-#add thirdParty
+add_library(shaders INTERFACE)
+file(GLOB SHADER_SRC ${PROJECT_SOURCE_DIR}/../resource/Shaders/*.*)
+target_sources(shaders INTERFACE ${SHADER_SRC})
+target_link_libraries(${APP_NAME} PRIVATE shaders)
+source_group(Shaders FILES ${SHADER_SRC})
+
 add_library(glad INTERFACE)
 target_sources(glad INTERFACE ${PROJECT_SOURCE_DIR}/../thirdParty/GLAD/src/glad.c)
 target_include_directories(glad INTERFACE ${PROJECT_SOURCE_DIR}/../thirdParty/GLAD/include)
 target_link_libraries(${APP_NAME} PRIVATE glad)
-#source_group(Config FILES ${PROJECT_SOURCE_DIR}/../thirdParty/GLAD/src/glad.c)
 
 add_library(glfw INTERFACE)
 target_include_directories(glfw INTERFACE  ${PROJECT_SOURCE_DIR}/../thirdParty/GLFW/include)
@@ -53,4 +60,11 @@ add_library(tinyobj INTERFACE)
 target_include_directories(tinyobj INTERFACE ${PROJECT_SOURCE_DIR}/../thirdParty/tinyobjloader)
 target_link_libraries(${APP_NAME} PRIVATE tinyobj)
 
-add_custom_target(UpdateRes VERBATIM COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/../resource" "${PROJECT_BINARY_DIR}/resource")
+add_custom_target(UpdateRes VERBATIM 
+	COMMAND ${CMAKE_COMMAND} -E copy_directory 
+		"${PROJECT_SOURCE_DIR}/../resource/Objects" 
+		"${PROJECT_BINARY_DIR}/resource/Objects"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory 
+		"${PROJECT_SOURCE_DIR}/../resource/Shaders" 
+		"${PROJECT_BINARY_DIR}/resource/Shaders"
+)

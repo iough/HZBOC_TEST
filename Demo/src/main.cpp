@@ -116,7 +116,7 @@ int main() {
 		}
 	}
 	
-	Model car("../resource/Car.obj");
+	Model car("../resource/Objects/Car.obj");
 	int mtlNum = 5;
 	for (int i = 0; i < mtlNum; ++i) {
 		batchInstance.LoadMaterials((rand()%10)/10.0f, (rand() % 10) / 10.0f, (rand() % 10) / 10.0f, 0.0f);
@@ -133,10 +133,10 @@ int main() {
 	}
 	batchInstance.SetUp();
 
-	Shader offlineRenderShader("../resource/OfflineRender.vert", "../resource/OfflineRender.frag");
-	Shader presentShader("../resource/Present.vert", "../resource/Present.frag");
-	Shader DepthReduce("../resource/DepthReduce.comp");
-	Shader HizCulling("../resource/HizCulling.comp");
+	Shader offlineRenderShader("../resource/Shaders/OfflineRender.vert", "../resource/Shaders/OfflineRender.frag");
+	Shader presentShader("../resource/Shaders/Present.vert", "../resource/Shaders/Present.frag");
+	Shader DepthReduce("../resource/Shaders/DepthReduce.comp");
+	Shader HizCulling("../resource/Shaders/HizCulling.comp");
 
 	PrepareTransformMatrix();
 	PrepareFrameBuffer();
