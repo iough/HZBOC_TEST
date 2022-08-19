@@ -378,9 +378,6 @@ public:
 			else {
 				obj.second.isDraw = true;
 				visibleObjCounter++;
-				//center = (boxcorner[0] + boxcorner[7]) / 2.f;
-				//dist = glm::distance(cameraPos, glm::vec3(center.x, center.y, center.z));
-				
 			}
 			glBindBufferBase(GL_UNIFORM_BUFFER, 1, obj.second.dataSSBO);
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, obj.second.visibleListSSBO);
@@ -436,7 +433,7 @@ private:
 		bit |= boxcorner[0].y < -boxcorner[0].w ? 8 : 0;
 		bit |= boxcorner[0].z >  boxcorner[0].w ? 16 : 0;
 		bit |= boxcorner[0].z < -boxcorner[0].w ? 32 : 0;
-		bit |= boxcorner[0].w <= 0 ? 64 : 0;
+		//bit |= boxcorner[0].w <= 0 ? 64 : 0;
 		resBit = bit;
 		for (size_t i = 1; i < 8; ++i) {
 			bit = 0;
@@ -446,7 +443,7 @@ private:
 			bit |= boxcorner[i].y < -boxcorner[i].w ? 8 : 0;
 			bit |= boxcorner[i].z >  boxcorner[i].w ? 16 : 0;
 			bit |= boxcorner[i].z < -boxcorner[i].w ? 32 : 0;
-			bit |= boxcorner[i].w <= 0 ? 64 : 0;
+			//bit |= boxcorner[i].w <= 0 ? 64 : 0;
 			resBit &= bit;
 		}
 		return resBit != 0;

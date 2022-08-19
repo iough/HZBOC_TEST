@@ -1,5 +1,5 @@
-#version 450
-#extension GL_ARB_shader_draw_parameters : enable
+#version 460
+//#extension GL_ARB_shader_draw_parameters : enable
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
@@ -47,5 +47,5 @@ void main(){
 	vs_out.FragPos = worldPos.xyz;
 	vs_out.Normal = normal;
 	vs_out.uv = texCoord;
-	vs_out.Color = meshletDatas[gl_BaseInstanceARB].color;
+	vs_out.Color = meshletDatas[gl_BaseInstance].color;
 }

@@ -11,9 +11,10 @@ namespace {
 
 	GLFWwindow* window;
 	const uint32_t SCR_WIDTH = 800;
-	const uint32_t SCR_HEIGHT = 640;
+	const uint32_t SCR_HEIGHT = 600;
 
-	Camera camera(glm::vec3(0.f, 0.f, 200.f));
+	//Camera camera(glm::vec3(0.f, 0.f, 200.f));
+	Camera camera(glm::vec3(-42.7986f, 420.679f, 129.628f));
 	float projNear = 0.1f;
 	float projFar = 5000.f;
 	float projFeild = projFar - projNear;
@@ -42,6 +43,8 @@ namespace {
 	size_t FrameNum;
 	float frameTimer;
 	float FPS;
+	uint32_t fpsCounter;
+	float avgFps;
 	std::string title;
 
 }
@@ -92,6 +95,21 @@ void PrepareFrameBuffer() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 }
+glm::mat4 MakeInfReversedZProjRH(float fovY_radius, float aspectWbyH, float zNear, float zFar) {
+	float f = 1.0f / tan(fovY_radius / 2.0f);
+	//return glm::mat4(
+	//	f / aspectWbyH, 0.0f, 0.0f, 0.0f,
+	//	0.0f, f, 0.0f, 0.0f,
+	//	0.0f, 0.0f, 0.0f, -1.0f,
+	//	0.0f, 0.0, zNear, 0.0f
+	//);
+	return glm::mat4(
+		f / aspectWbyH, 0.0f, 0.0f, 0.0f,
+		0.0f, f, 0.0f, 0.0f,
+		0.0f, 0.0f, zNear/(zFar - zNear), -1.f,
+		0.0f, 0.0, (zNear * zFar) / (zFar - zNear), 0.0f
+	);
+}
 int main() {
 	{
 		glfwInit();
@@ -109,6 +127,7 @@ int main() {
 
 		glfwMakeContextCurrent(window);
 		glfwSetKeyCallback(window, key_callback);
+		glfwSetWindowPos(window, 100, 100);
 
 		if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 			std::cout << "Failed to initialize GLAD.\n";
@@ -121,9 +140,9 @@ int main() {
 	for (int i = 0; i < mtlNum; ++i) {
 		batchInstance.LoadMaterials((rand()%10)/10.0f, (rand() % 10) / 10.0f, (rand() % 10) / 10.0f, 0.0f);
 	}
-	int xInst = 10;
-	int yInst = 2;
-	int zInst = 10;
+	int xInst = 5;
+	int yInst = 5;
+	int zInst = 5;
 	for (auto x = 0; x < xInst; ++x) {
 		for (auto y = 0; y < yInst; ++y) {
 			for (auto z = 0; z < zInst; ++z) {
@@ -145,30 +164,37 @@ int main() {
 	glBindTextureUnit(1, tOfflineCA1);
 	glBindTextureUnit(2, tOfflineDS);
 
+	//glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);//
 	glClearColor(1.0, 1.0, 1.0, 0.0);
 	glClearDepth(1.0);
+	//glClearDepth(0.0f);//
 	glEnable(GL_DEPTH_TEST);
+	//glDepthFunc(GL_GREATER);//
 
+	camera.Yaw = -47.4;
+	camera.Pitch = -32.3171f;
+	camera.updateCameraVectors();
+
+	lastTime = static_cast<float>(glfwGetTime());
 	while (!glfwWindowShouldClose(window)) {
-		currentTime = static_cast<float>(glfwGetTime());
-		deltaTime = currentTime - lastTime;
-		lastTime = currentTime;
+		
 
 		processInput(window);
 		
-		{	
+		{	glEnable(GL_DEPTH_TEST);
 			glBindFramebuffer(GL_FRAMEBUFFER, fOfflineFBO);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glBindBufferBase(GL_UNIFORM_BUFFER, 0, bVPMatrixUBO);
 			vpMatrix.viewMat = camera.GetViewMatrix();
 			vpMatrix.projMat = glm::perspective(camera.Zoom, float(SCR_WIDTH) / float(SCR_HEIGHT), projNear, projFar);
+			//vpMatrix.projMat = MakeInfReversedZProjRH(camera.Zoom, float(SCR_WIDTH) / float(SCR_HEIGHT), projNear, projFar);//
 			vpMatrix.vpMat = vpMatrix.projMat * vpMatrix.viewMat;		
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, 3 * sizeof(glm::mat4), &vpMatrix);
 			glUniform3fv(0, 1, &camera.Position[0]);
 			offlineRenderShader.use();
 			batchInstance.DrawVisible();
 		}
-		{
+		/*{
 			{
 				DepthReduce.use();
 				currentWidth = SCR_WIDTH;
@@ -192,13 +218,25 @@ int main() {
 				glUniform3fv(0, 1, &camera.Position[0]);
 				batchInstance.DrawFixed();
 			}
-		}
-		
+		}*/
+#ifdef _DEBUG
+		std::cout << "CameraPos: " << camera.Position.x << ", " << camera.Position.y << ", " << camera.Position.z << std::endl;
+		std::cout << "Angle:     " << camera.Yaw << ", " << camera.Pitch << std::endl;
+#endif // _DEBUG
 
 		{
+			
+			//glBindFramebuffer(GL_FRAMEBUFFER, fOfflineFBO);
+			//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			//glBindFramebuffer(GL_READ_FRAMEBUFFER, fOfflineFBO);
+			//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+			//glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT,
+			//	0, 0, SCR_WIDTH, SCR_HEIGHT,
+			//	GL_COLOR_BUFFER_BIT, GL_LINEAR);
+			//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glClearColor(1.0, 1.0, 1.0, 0.0);
 			presentShader.use();
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 		}
@@ -206,14 +244,24 @@ int main() {
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
+		currentTime = static_cast<float>(glfwGetTime());
+		deltaTime = currentTime - lastTime;
+		lastTime = currentTime;
+
 		++FrameNum;
 		frameTimer += deltaTime;
 		if (FrameNum >= 30) {
 			FPS = FrameNum / frameTimer;
 			FrameNum = 0;
-			frameTimer = 0;
+			frameTimer = 0.f;
 			title = "Learn OpenGL (FPS: " + std::to_string(FPS) + ")";
 			glfwSetWindowTitle(window, title.c_str());
+
+			avgFps += FPS;
+			if (++fpsCounter >= 30) {
+				std::cout << "AVG FPS: " << avgFps / fpsCounter << std::endl;
+				break;
+			}
 		}
 
 	}

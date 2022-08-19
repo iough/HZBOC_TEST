@@ -107,8 +107,8 @@ bool isVisible(in uint ID){
 	float viewCullThreshold = 1.0;
 	if(maxSize < viewCullThreshold) return false;
 
-	vec3 conePos = (modelMat * vec4(meshletDatas[ID].coneApex, 1.0)).xyz;
-	if(dot(normalize(conePos - cameraPos), meshletDatas[ID].coneNorm) >= meshletDatas[ID].coneAngle) return false;
+	//vec3 conePos = (modelMat * vec4(meshletDatas[ID].coneApex, 1.0)).xyz;
+	//if(dot(normalize(conePos - cameraPos), meshletDatas[ID].coneNorm) >= meshletDatas[ID].coneAngle) return false;
 
 	float mipLevel = ceil(log2(maxSize));
 	vec4 depth = vec4(
